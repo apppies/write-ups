@@ -1,4 +1,4 @@
-# Blue
+# Blue @ 10.10.10.40
 
 ## Enumeration
 
@@ -105,7 +105,7 @@ good response status: INVALID_PARAMETER
 done
 ```
 
-The groom number of 40 might need some adaption, in this case 40 seems to work
+The groom number might need some fine tuning, in this case 40 seems to work
 
 ```bash
 $ nc -nlvp 4444
